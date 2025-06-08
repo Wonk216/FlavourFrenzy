@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flavor Frenzy - Advanced Prototype</title>
+    <title>Flavour Frenzy - Advanced Prototype</title>
     <style>
         body {
             display: flex;
@@ -105,7 +105,7 @@
     <div id="game-container">
         <div id="start-screen">
             <h2>Domino's</h2>
-            <h1>Flavor Frenzy</h1>
+            <h1>Flavour Frenzy</h1>
             <p>Enter your nickname to start:</p>
             <input type="text" id="player-name-input" placeholder="e.g., PizzaPro" maxlength="15">
             <button id="start-button">Start Game</button>
@@ -350,7 +350,7 @@
             });
         }
         function shareOnWhatsApp() {
-            const message = `${playerName} just scored ${score} in Domino's Flavor Frenzy! I've won a Free Garlic Bread on my next order, and you can too! #DominosFlavorFrenzy`;
+            const message = `${playerName} just scored ${score} in Domino's Flavour Frenzy! I've won a Free Garlic Bread on my next order, and you can too! #DominosFlavourFrenzy`;
             const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
         }
@@ -474,7 +474,6 @@
             });
         }
         
-        // ENHANCED Pizza Base drawing function
         function drawPizzaBase() {
             ctx.save();
             const pizzaY = canvas.height + 200; 
