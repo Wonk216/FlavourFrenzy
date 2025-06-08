@@ -83,6 +83,21 @@
         #start-button:hover {
             transform: scale(1.05);
         }
+        .rules {
+            text-align: left;
+            margin-top: 30px;
+            width: 80%;
+        }
+        .rules ul {
+            list-style-type: '✅';
+            padding-left: 25px;
+            margin: 0;
+        }
+        .rules li {
+            padding-left: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -94,7 +109,13 @@
             <p>Enter your nickname to start:</p>
             <input type="text" id="player-name-input" placeholder="e.g., PizzaPro" maxlength="15">
             <button id="start-button">Start Game</button>
-            <p style="margin-top: 40px; font-size: 14px;">Slice toppings, avoid chilies, and score big in 60 seconds!</p>
+            <div class="rules">
+                <ul>
+                    <li>Slice the fresh toppings!</li>
+                    <li>Avoid the spicy chilies!</li>
+                    <li>Score big in 60 seconds!</li>
+                </ul>
+            </div>
         </div>
         <canvas id="gameCanvas" width="400" height="600"></canvas>
     </div>
@@ -112,7 +133,12 @@
         let isSlicing = false, timeToNextObject = 0;
         let gameObjects = [], particles = [], scorePopups = [], sliceTrail = [], backgroundParticles = [];
         const toppings = ['🍄', '🫒', '🧅'];
-        const specialTopping = '🍅'; // The new special topping
+        const specialTopping = '🍅'; 
+
+        // --- Tutorial Animation State ---
+        let demoObjects = [];
+        let demoState = 'slicing';
+        let demoTimer = 0;
 
         // --- Audio ---
         let audioContext, soundEnabled = false;
@@ -149,7 +175,7 @@
                 oscillator.type = 'square';
                 oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
-            } else if (type === 'special') { // NEW: Sound for special topping
+            } else if (type === 'special') {
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(1200, audioContext.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4);
@@ -331,7 +357,7 @@
         function checkButtonClick(x, y) {
             if (gameState === 'gameOver') {
                 if (x > playAgainButtonRect.x && x < playAgainButtonRect.x + playAgainButtonRect.width && y > playAgainButtonRect.y && y < playAgainButtonRect.y + playAgainButtonRect.height) {
-                    resetGame();
+                    resetGame(true);
                 } else if (x > shareButtonRect.x && x < shareButtonRect.x + shareButtonRect.width && y > shareButtonRect.y && y < shareButtonRect.y + shareButtonRect.height) {
                     shareOnWhatsApp();
                 } else if (x > ratingAreaRect.x && x < ratingAreaRect.x + ratingAreaRect.width && y > ratingAreaRect.y && y < ratingAreaRect.y + ratingAreaRect.height) {
@@ -352,20 +378,26 @@
             }
         }
 
-        function resetGame() {
+        function resetGame(fromGameOver = false) {
             score = 0; gameTime = 60; gameObjects = []; userRating = 0;
             particles.splice(0, particles.length);
             scorePopups.splice(0, scorePopups.length);
             lastTime = 0;
-            playerName = playerNameInput.value || "PizzaPro";
-            startScreen.classList.add('hidden');
-            gameState = 'playing';
+            
+            if(fromGameOver) {
+                startScreen.classList.remove('hidden');
+                gameState = 'start';
+            } else {
+                playerName = playerNameInput.value || "PizzaPro";
+                startScreen.classList.add('hidden');
+                gameState = 'playing';
+            }
         }
         
         function setupEventListeners() {
             startButton.addEventListener('click', () => {
                 if (!soundEnabled) initAudio();
-                resetGame();
+                resetGame(false); 
             });
 
             const getPointerPos = (e) => {
@@ -378,11 +410,11 @@
             const onPointerDown = (e) => {
                 if (e.touches) e.preventDefault();
                 const pos = getPointerPos(e);
-                updatePointerPosition(pos.x, pos.y);
                 
                 if (gameState === 'gameOver') {
                     checkButtonClick(pos.x, pos.y);
                 } else if (gameState === 'playing') {
+                    updatePointerPosition(pos.x, pos.y);
                     isSlicing = true;
                     handleSlice(pos.x, pos.y);
                 }
@@ -442,6 +474,32 @@
             });
         }
         
+        // ENHANCED Pizza Base drawing function
+        function drawPizzaBase() {
+            ctx.save();
+            const pizzaY = canvas.height + 200; 
+            const pizzaRadius = 250;
+
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = -5;
+
+            // Crust
+            ctx.fillStyle = '#e6c88f';
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, pizzaY, pizzaRadius, 0, 2 * Math.PI);
+            ctx.fill();
+
+            ctx.shadowColor = 'transparent';
+
+            // Sauce
+            ctx.fillStyle = '#c0392b';
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, pizzaY, pizzaRadius - 20, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+
         function drawSliceTrail() {
             if (sliceTrail.length < 2) return;
             ctx.save();
@@ -531,7 +589,7 @@
 
         function drawGameOverScreen() {
             drawDynamicBackground();
-            [...gameObjects, ...particles, ...scorePopups].forEach(obj => obj.draw());
+            drawPizzaBase();
             drawUI();
             ctx.save();
             ctx.fillStyle = 'rgba(0,0,0,0.7)';
@@ -568,24 +626,24 @@
             drawRoundedButton(playAgainButtonRect, 'Play Again', '🔄️', '#007bff');
             ctx.restore();
         }
-
-        // --- Main Game Loop ---
+        
         function gameLoop(timestamp) {
             const deltaTime = (timestamp - lastTime) / 1000 || 0;
             lastTime = timestamp;
-
+        
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+        
             if (gameState === 'start') {
-                drawDynamicBackground(); 
+                drawStartScreenAnimation(deltaTime);
             } else if (gameState === 'playing') {
                 gameTime -= deltaTime;
                 if (gameTime <= 0) {
                     gameTime = 0;
                     gameState = 'gameOver';
                 }
-
+        
                 drawDynamicBackground();
+                drawPizzaBase();
                 handleSpawning(deltaTime);
                 gameObjects = gameObjects.filter(obj => obj.y <= canvas.height + obj.radius && !obj.isSliced);
                 
@@ -603,8 +661,59 @@
             } else if (gameState === 'gameOver') {
                 drawGameOverScreen();
             }
-
+        
             requestAnimationFrame(gameLoop);
+        }
+        
+        function drawStartScreenAnimation(deltaTime) {
+            drawDynamicBackground();
+            drawPizzaBase();
+            demoTimer += deltaTime;
+        
+            if (demoObjects.length === 0) {
+                if (demoState === 'slicing') {
+                    let demoTopping = new GameObject('🍄');
+                    demoTopping.y = canvas.height + 50;
+                    demoTopping.speed = -150; 
+                    demoObjects.push(demoTopping);
+                } else if (demoState === 'avoiding') {
+                    let demoBomb = new GameObject('🌶️', true);
+                    demoBomb.y = canvas.height + 50;
+                    demoBomb.speed = -150;
+                    demoObjects.push(demoBomb);
+                }
+            }
+            
+            demoObjects.forEach(obj => {
+                obj.update(deltaTime);
+                obj.draw();
+                
+                if (obj.y < canvas.height / 2 && !obj.isSliced) {
+                    if (demoState === 'slicing') {
+                        obj.isSliced = true;
+                        particles.push(new Particle(obj.x, obj.y, obj.emoji));
+                        particles.push(new Particle(obj.x, obj.y, obj.emoji));
+                        scorePopups.push(new ScorePopup(obj.x, obj.y, 'Slice these!'));
+                    } else if (demoState === 'avoiding' && obj.isBomb) {
+                         obj.isSliced = true;
+                         scorePopups.push(new ScorePopup(obj.x, obj.y, 'Avoid these!', 'rgba(255, 50, 50,'));
+                    }
+                }
+            });
+        
+            [...particles, ...scorePopups].forEach(p => {
+                p.update(deltaTime);
+                p.draw();
+            });
+            particles.forEach((p, i) => { if(p.life <= 0) particles.splice(i, 1); });
+            scorePopups.forEach((p, i) => { if(p.life <= 0) scorePopups.splice(i, 1); });
+        
+            demoObjects = demoObjects.filter(obj => obj.y > -50);
+        
+            if (demoTimer > 4) {
+                demoTimer = 0;
+                demoState = (demoState === 'slicing') ? 'avoiding' : 'slicing';
+            }
         }
 
         // --- Initialize and Start ---
